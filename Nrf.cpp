@@ -15,25 +15,34 @@
 #define ON GPIO_PIN_SET
 #define OFF GPIO_PIN_RESET
 
-Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef* pinGroup) // GPIO_TypeDef* is like variable but it is a pointer for your gpio pin, you must use TypeDef instead of normal variables cause it will look for a GPIO PIN not a variable the contains your gpio pin
+
+Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is like variable but it is a pointer for your gpio pin, you must use TypeDef instead of normal variables cause it will look for a GPIO PIN not a variable the contains your gpio pin
 {
     this->CE = CE;         // put your CE pin here ex. GPIO_PIN_3
     this->CSN = CSN;       // put your CSN pin here ex. GPIO_PIN_4
     this->GPIO = pinGroup; // put your GPIO pin group here ex. GPIOB, GPIOA
     // This will do:  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET) -> HAL_GPIO_WritePin(GPIO, CSN, OFF)
 }
+void Nrf::setTxAdress(uint8_t* adress)
+{
+    uint8_t regAdress = 0x20 | 0x10;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+    HAL_SPI_Transmit(&hspi1, adress, 5, 100);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+}
+
+ // 0x20 | 0x2A receiver adress
 
 void Nrf::setSignal(uint8_t level)
-{   // user input for example [0000 0000] -> min
+{ // user input for example [0000 0000] -> min
     uint8_t adress = 0x20 | 0x06;
-    
 
-    HAL_GPIO_WritePin(this -> GPIO,this ->  CSN, OFF);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
     HAL_SPI_Transmit(&hspi1, &adress, 1, 10); // assumin we use spi1 we do &hspi1
     HAL_SPI_Transmit(&hspi1, &level, 1, 100);
-    HAL_GPIO_WritePin(this -> GPIO,this ->  CSN, ON);
-
-
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 
     // 0000 0[00]0
     // 00[0]0 [0][00]0
@@ -72,4 +81,3 @@ void Nrf::setSignal(uint8_t level)
 
     // adress 0x06
 }
-
