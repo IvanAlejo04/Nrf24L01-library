@@ -4,9 +4,10 @@
  * See LICENSE file in the project root for full license information.
  */
 // april 9 2026
-extern SPI_HandleTypeDef hspi1;
+
 #include "Nrf.h"
 #include "main.h"
+extern SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN ET */
 // extern SPI_HandleTypeDef hspi1;  - type this block of code the exter..... on your main
@@ -30,14 +31,6 @@ void Nrf::begin()
     HAL_GPIO_WritePin(this->GPIO, this->CE, OFF);
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
-
-enum powerLevel
-{
-    testingRange = 0b00001000,
-    shortRange = 0b00001010,
-    midRange = 0b00000100,
-    longRange = 0b00100110
-};
 
 void Nrf::setPowerLevel(powerLevel level) // setting power level adress (put only levels: testingRange, shortRange, midRange, longRange)
 {
@@ -128,3 +121,5 @@ void Nrf::setPayLoad(uint8_t payLoadSize, uint8_t pipeNum) // setting payload si
     HAL_SPI_Transmit(&hspi1, &payLoadSize, 1, 10);
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
+
+
