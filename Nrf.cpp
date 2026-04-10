@@ -4,7 +4,7 @@
  * See LICENSE file in the project root for full license information.
  */
 // april 9 2026
-
+extern SPI_HandleTypeDef hspi1;
 #include "Nrf.h"
 #include "main.h"
 
@@ -21,14 +21,15 @@ Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is 
     this->CSN = CSN;       // put your CSN pin here ex. GPIO_PIN_4
     this->GPIO = pinGroup; // put your GPIO pin group here ex. GPIOB, GPIOA
     // This will do:  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET) -> HAL_GPIO_WritePin(GPIO, CSN, OFF)
+    payLoadSize = 0;
 }
 
 void Nrf::begin()
 {
     HAL_Delay(11);
-    HAL_GPIO_PinWrite(this->GPIO, this->CE, OFF);
-    HAL_GPIO_PinWrite(this->GPIO, this->CSN, ON);
-} 
+    HAL_GPIO_WritePin(this->GPIO, this->CE, OFF);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+}
 
 enum powerLevel
 {
@@ -38,13 +39,13 @@ enum powerLevel
     longRange = 0b00100110
 };
 
-void Nrf::setPowerLevel(powerLevel level)
-{ // user input for example [0000 0000] -> min
+void Nrf::setPowerLevel(powerLevel level) // setting power level adress (put only levels: testingRange, shortRange, midRange, longRange)
+{
     uint8_t adress = 0x20 | 0x06;
     uint8_t levelConfig = (uint8_t)level;
 
     HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
-    HAL_SPI_Transmit(&hspi1, &adress, 1, 10); // assumin we use spi1 we do &hspi1
+    HAL_SPI_Transmit(&hspi1, &adress, 1, 10); // assuming we use spi1 we do &hspi1
     HAL_SPI_Transmit(&hspi1, &levelConfig, 1, 100);
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 
@@ -91,7 +92,7 @@ void Nrf::setPowerLevel(powerLevel level)
     // adress 0x06
 }
 
-void Nrf::setTxAdress(uint8_t *adress)
+void Nrf::setTxAdress(uint8_t *adress) // setting tx adress
 {
     uint8_t regAdress = 0x20 | 0x10;
 
@@ -101,8 +102,7 @@ void Nrf::setTxAdress(uint8_t *adress)
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
 
-// 0x20 | 0x2A receiver adress
-void Nrf::setRxAdress(uint8_t *adress)
+void Nrf::setRxAdress(uint8_t *adress) // setting rx address
 {
     uint8_t regAdress = 0x20 | 0x0A;
 
@@ -112,3 +112,19 @@ void Nrf::setRxAdress(uint8_t *adress)
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
 
+void Nrf::setPayLoad(uint8_t payLoadSize, uint8_t pipeNum) // setting payload size
+{
+
+    if (payLoadSize > 32)
+        payLoadSize = 32;
+    if (pipeNum > 5)
+        pipeNum = 5;
+
+    uint8_t regAdress = 0x20 | (0x11 + pipeNum);
+    this->payLoadSize = payLoadSize;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+    HAL_SPI_Transmit(&hspi1, &payLoadSize, 1, 10);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+}
