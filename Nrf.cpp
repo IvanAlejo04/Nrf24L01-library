@@ -15,7 +15,6 @@
 #define ON GPIO_PIN_SET
 #define OFF GPIO_PIN_RESET
 
-
 Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is like variable but it is a pointer for your gpio pin, you must use TypeDef instead of normal variables cause it will look for a GPIO PIN not a variable the contains your gpio pin
 {
     this->CE = CE;         // put your CE pin here ex. GPIO_PIN_3
@@ -23,25 +22,30 @@ Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is 
     this->GPIO = pinGroup; // put your GPIO pin group here ex. GPIOB, GPIOA
     // This will do:  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET) -> HAL_GPIO_WritePin(GPIO, CSN, OFF)
 }
-void Nrf::setTxAdress(uint8_t* adress)
+
+void Nrf::begin()
 {
-    uint8_t regAdress = 0x20 | 0x10;
+    HAL_Delay(11);
+    HAL_GPIO_PinWrite(this->GPIO, this->CE, OFF);
+    HAL_GPIO_PinWrite(this->GPIO, this->CSN, ON);
+} 
 
-    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
-    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
-    HAL_SPI_Transmit(&hspi1, adress, 5, 100);
-    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
-}
+enum powerLevel
+{
+    testingRange = 0b00001000,
+    shortRange = 0b00001010,
+    midRange = 0b00000100,
+    longRange = 0b00100110
+};
 
- // 0x20 | 0x2A receiver adress
-
-void Nrf::setSignal(uint8_t level)
+void Nrf::setPowerLevel(powerLevel level)
 { // user input for example [0000 0000] -> min
     uint8_t adress = 0x20 | 0x06;
+    uint8_t levelConfig = (uint8_t)level;
 
     HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
     HAL_SPI_Transmit(&hspi1, &adress, 1, 10); // assumin we use spi1 we do &hspi1
-    HAL_SPI_Transmit(&hspi1, &level, 1, 100);
+    HAL_SPI_Transmit(&hspi1, &levelConfig, 1, 100);
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 
     // 0000 0[00]0
@@ -61,23 +65,50 @@ void Nrf::setSignal(uint8_t level)
 
     // example configs:
 
-    // short range
-    // 0000 1000 -> min
-    // 0000 1010 -> low
-    // 0000 1100 -> high
-    // 0000 1110 -> max
+    // short range high mbps
+    // 0000 1000 -> min - PA level
+    // 0000 1010 -> low - PA level
+    // 0000 1100 -> high - PA level
+    // 0000 1110 -> max - PA level
 
-    // mid range
-    //  0000 0000 -> min
-    //  0000 0010 -> low
-    //  0000 0100 -> high
-    //  0000 0110 -> max
+    // mid range standart mbps
+    // 0000 0000 -> min - PA level
+    // 0000 0010 -> low - PA level
+    // 0000 0100 -> high - PA level
+    // 0000 0110 -> max - PA level
 
-    // high range
-    //  0010 0000 -> min
-    //  0010 0010 -> low
-    //  0010 0100 -> high
-    //  0010 0110 -> max
+    // high range low mbps
+    // 0010 0000 -> min - PA level
+    // 0010 0010 -> low - PA level
+    // 0010 0100 -> high - PA level
+    // 0010 0110 -> max - PA level
+
+    // high mbps means past transfer of data good for short range bad for long range.
+
+    // high PA level means the signal can pass through walls but eats more battery -- you need to use external power source for your nrf but same power source as your MCU
+    // to avoid overheating the on board regulator of your devBoard.
 
     // adress 0x06
 }
+
+void Nrf::setTxAdress(uint8_t *adress)
+{
+    uint8_t regAdress = 0x20 | 0x10;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+    HAL_SPI_Transmit(&hspi1, adress, 5, 100);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+}
+
+// 0x20 | 0x2A receiver adress
+void Nrf::setRxAdress(uint8_t *adress)
+{
+    uint8_t regAdress = 0x20 | 0x0A;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+    HAL_SPI_Transmit(&hspi1, adress, 5, 100);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+}
+
