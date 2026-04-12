@@ -122,4 +122,12 @@ void Nrf::setPayLoad(uint8_t payLoadSize, uint8_t pipeNum) // setting payload si
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
 
+void Nrf::write(uint8_t *data)
+{
+    uint8_t command = 0xA0;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &command, 1, 10);
+    HAL_SPI_Transmit_DMA(&hspi1, data, payLoadSize);
+}
 
