@@ -131,3 +131,12 @@ void Nrf::write(uint8_t *data)
     HAL_SPI_Transmit_DMA(&hspi1, data, payLoadSize);
 }
 
+void Nrf::read(uint8_t *data)
+{
+    uint8_t command = 0x61;
+    
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &command, 1, 10);
+    HAL_SPI_Receive_DMA(&hspi1, data, payLoadSize);
+}
+
