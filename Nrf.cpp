@@ -140,3 +140,13 @@ void Nrf::read(uint8_t *data)
     HAL_SPI_Receive_DMA(&hspi1, data, payLoadSize);
 }
 
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi == &hspi1)
+    {
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+        // you can change GPIOA, must ensure that this is your CSN pin.
+    }
+}
+
+// on HAL_SPI_Transmit_DMA()there are only 3 arguments the time is removed
