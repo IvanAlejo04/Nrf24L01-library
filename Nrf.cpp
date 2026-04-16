@@ -134,7 +134,7 @@ void Nrf::write(uint8_t *data)
 void Nrf::read(uint8_t *data)
 {
     uint8_t command = 0x61;
-    
+
     HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
     HAL_SPI_Transmit(&hspi1, &command, 1, 10);
     HAL_SPI_Receive_DMA(&hspi1, data, payLoadSize);
@@ -149,4 +149,75 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
     }
 }
 
+
+
 // on HAL_SPI_Transmit_DMA()there are only 3 arguments the time is removed
+// tx flush 0xE1
+// rx flush 0xE2
+
+//===========================================================================//
+// status reg 0x07
+//---------------------------------------------------------------------------//
+//  bit 6 -> rx - flag if succes
+//  bit 5 -> tx - flag if succes
+//  bit 4 -> max rt - flag if it fails
+//===========================================================================//
+
+
+//===========================================================================//
+// note to do!!!
+//---------------------------------------------------------------------------//
+// --make a MAX_RT function -> register 0x04 -> (fig 1)
+// --make status checker for tx and rx -> check bit 5 or 6 to see the flag, flip bit to 1 to clear
+// --modify tx write function to check status bit 0, if bit 0 is 1 it contains something if it is 0 then safe to send data
+//===========================================================================//
+
+
+//===========================================================================//
+// for status checker
+//---------------------------------------------------------------------------//
+// do transmitReceive register adress 0x07 receive status
+// for tx -> if status bit 5 is 1
+// send 1 to bit 5 to clear -> means succes
+// else if status bit 4 is 1
+// send 1 to bit 4 to clear -> clear fifo 0xE1 if tx
+//---------------------------------------------------------------------------//
+// no need to do much on receiver no need to check but must flip the rx dx to 1
+// for rx -> if status bit 6 is 1
+// send 1 to bit 6 to clear -> means succes
+//===========================================================================//
+
+
+//===========================================================================//
+// fig 1
+//---------------------------------------------------------------------------//
+// bit 7 - 4 -> time
+// bit 3 - 0 -> max tries
+//===========================================================================//
+
+
+//===========================================================================//
+// for MAX_RT time bits 7 - 4
+//---------------------------------------------------------------------------//
+// 0000 = 250µs
+// 0001 = 500µs
+// 0101 = 1500µs
+// 1111 = 4000µs
+//===========================================================================//
+
+
+//===========================================================================//
+// for MAX_RT Tries bits 3 - 0
+//---------------------------------------------------------------------------//
+// just do math
+// every bit position represents a number
+// bit 0 = 1
+// bit 1 = 2
+// bit 2 = 4
+// bit 3 = 8
+// formula -> 2^n where n is the position of bit. for example bit 3 = 2^3 meaning bit 3 = 2x2x2 = 8
+// note!! max of 15 tries
+//===========================================================================//
+
+
+
