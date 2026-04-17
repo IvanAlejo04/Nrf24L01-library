@@ -23,6 +23,7 @@ Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is 
     this->GPIO = pinGroup; // put your GPIO pin group here ex. GPIOB, GPIOA
     // This will do:  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET) -> HAL_GPIO_WritePin(GPIO, CSN, OFF)
     payLoadSize = 0;
+    data = 0b00000000;
 }
 
 void Nrf::begin()
@@ -83,6 +84,18 @@ void Nrf::setPowerLevel(powerLevel level) // setting power level adress (put onl
     // to avoid overheating the on board regulator of your devBoard.
 
     // adress 0x06
+}
+
+void Nrf::setMaxTry()
+{
+    // already set for 15 tries and 1500µs
+    uint8_t regAdress = 0x20 | 0x04;
+    uint8_t data = 0b01011111;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+    HAL_SPI_Transmit(&hspi1, &data, 1, 10);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 }
 
 void Nrf::setTxAdress(uint8_t *adress) // setting tx adress
@@ -149,8 +162,6 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
     }
 }
 
-
-
 // on HAL_SPI_Transmit_DMA()there are only 3 arguments the time is removed
 // tx flush 0xE1
 // rx flush 0xE2
@@ -163,15 +174,13 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 //  bit 4 -> max rt - flag if it fails
 //===========================================================================//
 
-
 //===========================================================================//
 // note to do!!!
 //---------------------------------------------------------------------------//
-// --make a MAX_RT function -> register 0x04 -> (fig 1)
+// --make a MAX_RT function -> register 0x04 -> (fig 1) ------- [done]
 // --make status checker for tx and rx -> check bit 5 or 6 to see the flag, flip bit to 1 to clear
 // --modify tx write function to check status bit 0, if bit 0 is 1 it contains something if it is 0 then safe to send data
 //===========================================================================//
-
 
 //===========================================================================//
 // for status checker
@@ -187,14 +196,12 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 // send 1 to bit 6 to clear -> means succes
 //===========================================================================//
 
-
 //===========================================================================//
 // fig 1
 //---------------------------------------------------------------------------//
 // bit 7 - 4 -> time
 // bit 3 - 0 -> max tries
 //===========================================================================//
-
 
 //===========================================================================//
 // for MAX_RT time bits 7 - 4
@@ -204,7 +211,6 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 // 0101 = 1500µs
 // 1111 = 4000µs
 //===========================================================================//
-
 
 //===========================================================================//
 // for MAX_RT Tries bits 3 - 0
@@ -218,6 +224,3 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 // formula -> 2^n where n is the position of bit. for example bit 3 = 2^3 meaning bit 3 = 2x2x2 = 8
 // note!! max of 15 tries
 //===========================================================================//
-
-
-
