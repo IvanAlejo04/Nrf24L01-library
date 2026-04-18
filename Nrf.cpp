@@ -153,6 +153,45 @@ void Nrf::read(uint8_t *data)
     HAL_SPI_Receive_DMA(&hspi1, data, payLoadSize);
 }
 
+void writeFlush()
+{
+    uint8_t command = 0x20 | 0x10;
+    uint8_t regAdress = 0x20 | 0x07;
+    uint8_t readAdress = 0x07;
+    uint8_t data;
+    uint8_t TX_DX = 0b00100000;
+    uint8_t MAX_RT = 0b00010000;
+    uint8_t flushTx = 0xE1;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &readAdress, 1, 10);
+    HAL_SPI_Receive(&hspi1, &data, 1, 10);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+
+    //check if TX_DX is flagged 1 meaning succes
+    if (data & (1 << 5))
+    {
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+        HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+        HAL_SPI_Transmit(&hspi1, &TX_DX, 1, 10);
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+    }
+    //check if flag is on
+    if (data & (1 << 4))
+    {
+        //clear the MAX_RT by sending 1 to bit 5
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+        HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+        HAL_SPI_Transmit(&hspi1, &MAX_RT, 1, 10);
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+
+        //clear fifo
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+        HAL_SPI_Transmit(&hspi1, &flushTx, 1, 10);
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+    }
+}
+
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 {
     if (hspi == &hspi1)
@@ -163,8 +202,8 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 }
 
 // on HAL_SPI_Transmit_DMA()there are only 3 arguments the time is removed
-// tx flush 0xE1
-// rx flush 0xE2
+// tx flush 0xE1 just transmit directly it will clear the register
+// rx flush 0xE2 just transmit directly it will clear the register 
 
 //===========================================================================//
 // status reg 0x07
