@@ -23,7 +23,6 @@ Nrf::Nrf(uint16_t CE, uint16_t CSN, GPIO_TypeDef *pinGroup) // GPIO_TypeDef* is 
     this->GPIO = pinGroup; // put your GPIO pin group here ex. GPIOB, GPIOA
     // This will do:  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET) -> HAL_GPIO_WritePin(GPIO, CSN, OFF)
     payLoadSize = 0;
-    data = 0b00000000;
 }
 
 void Nrf::begin()
@@ -153,7 +152,7 @@ void Nrf::read(uint8_t *data)
     HAL_SPI_Receive_DMA(&hspi1, data, payLoadSize);
 }
 
-void writeFlush()
+void Nrf::writeFlush()
 {
     uint8_t command = 0x20 | 0x10;
     uint8_t regAdress = 0x20 | 0x07;
@@ -168,7 +167,7 @@ void writeFlush()
     HAL_SPI_Receive(&hspi1, &data, 1, 10);
     HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 
-    //check if TX_DX is flagged 1 meaning succes
+    // check if TX_DX is flagged 1 meaning succes
     if (data & (1 << 5))
     {
         HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
@@ -176,18 +175,45 @@ void writeFlush()
         HAL_SPI_Transmit(&hspi1, &TX_DX, 1, 10);
         HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
     }
-    //check if flag is on
+    // check if flag is on
     if (data & (1 << 4))
     {
-        //clear the MAX_RT by sending 1 to bit 5
+        // clear the MAX_RT by sending 1 to bit 5
         HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
         HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
         HAL_SPI_Transmit(&hspi1, &MAX_RT, 1, 10);
         HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
 
-        //clear fifo
+        // clear fifo
         HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
         HAL_SPI_Transmit(&hspi1, &flushTx, 1, 10);
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+    }
+}
+
+void Nrf::readFlush()
+{
+    uint8_t regAdress = 0x20 | 0x07;
+    uint8_t readAdress = 0x07;
+    uint8_t data;
+    uint8_t RX_DS = 0b01000000;
+    uint8_t MAX_RT = 0b00010000;
+    uint8_t flushRx = 0xE2;
+
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+    HAL_SPI_Transmit(&hspi1, &readAdress, 1, 10);
+    HAL_SPI_Receive(&hspi1, &data, 1, 10);
+    HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+
+    if (data & (1 << 6))
+    {
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+        HAL_SPI_Transmit(&hspi1, &regAdress, 1, 10);
+        HAL_SPI_Transmit(&hspi1, &RX_DS, 1, 10);
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
+
+        HAL_GPIO_WritePin(this->GPIO, this->CSN, OFF);
+        HAL_SPI_Transmit(&hspi1, &flushRx, 1, 10);
         HAL_GPIO_WritePin(this->GPIO, this->CSN, ON);
     }
 }
@@ -203,7 +229,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 
 // on HAL_SPI_Transmit_DMA()there are only 3 arguments the time is removed
 // tx flush 0xE1 just transmit directly it will clear the register
-// rx flush 0xE2 just transmit directly it will clear the register 
+// rx flush 0xE2 just transmit directly it will clear the register
 
 //===========================================================================//
 // status reg 0x07
@@ -214,7 +240,7 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 //===========================================================================//
 
 //===========================================================================//
-// note to do!!!
+// note to do!!! [done]
 //---------------------------------------------------------------------------//
 // --make a MAX_RT function -> register 0x04 -> (fig 1) ------- [done]
 // --make status checker for tx and rx -> check bit 5 or 6 to see the flag, flip bit to 1 to clear
@@ -263,3 +289,29 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
 // formula -> 2^n where n is the position of bit. for example bit 3 = 2^3 meaning bit 3 = 2x2x2 = 8
 // note!! max of 15 tries
 //===========================================================================//
+
+// to do!!
+
+//--improve the hspi to be define by user put it on constructor
+//--make a tx or rx mode
+//--make a note for setting everything up the setup sequence[done]
+//--make an init function
+// we pull 0x20|0x00 to low by sending 0x00
+// then we setup the tx or rx adress
+// then setup payload size
+// then wake him up by sending rx[0b0000 1111] tx[0b0000 1110]
+
+// sequence
+//  begin()
+//   --pull CSN high, CE low, wait 11ms
+
+// init()
+//   -- 1. CONFIG = 0x00        (put to sleep)
+//   -- 2. setTxAddress()       (whisper TX address)
+//   -- 3. setRxAddress()       (whisper RX address)
+//   -- 4. setPayload()         (whisper payload size)
+//   -- 5. setPowerLevel()      (whisper power level)
+//   -- 6. setMaxTry()          (whisper retry config)
+//   -- 7. CONFIG = 0b00001110  (wake up! you're a TX)
+//          or CONFIG = 0b00001111  (wake up! you're a RX)
+//   -- 8. HAL_Delay(2)         (let him stretch and wake up properly)
